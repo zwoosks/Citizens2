@@ -1894,6 +1894,11 @@ public class NPCCommands {
         if (args.hasValueFlag("owner")) {
             String owner = args.getFlag("owner");
             Player playerOwner = Bukkit.getPlayerExact(owner);
+            
+            
+            if (!sender.getName().equalsIgnoreCase(owner) && !sender.hasPermission("citizens.npc.remove.bypass"))
+                    throw new NoPermissionsException();
+            
             for (NPC rem : Lists.newArrayList(CitizensAPI.getNPCRegistry())) {
                 if (playerOwner != null && rem.getOrAddTrait(Owner.class).isOwnedBy(playerOwner)) {
                     history.add(sender, new RemoveNPCHistoryItem(rem));
