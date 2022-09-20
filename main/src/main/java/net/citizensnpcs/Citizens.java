@@ -144,6 +144,11 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
         return created;
     }
 
+    @Override
+    public CommandManager getCommandManager() {
+        return null;
+    }
+
     private NPCDataStore createStorage(File folder) {
         Storage saves = null;
         String type = Setting.STORAGE_TYPE.asString();
