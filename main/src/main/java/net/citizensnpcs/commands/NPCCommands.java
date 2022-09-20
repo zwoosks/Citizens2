@@ -538,7 +538,7 @@ public class NPCCommands {
             permission = "citizens.npc.create")
     @Requirements
     public void create(CommandContext args, CommandSender sender, NPC npc) throws CommandException {
-        String name = Colorizer.parseColors(args.getJoinedStrings(1).trim());
+        String name = Colorizer.parseColors("&r" + args.getJoinedStrings(1).trim());
         EntityType type = EntityType.PLAYER;
         if (args.hasValueFlag("type")) {
             String inputType = args.getFlag("type");
@@ -1958,6 +1958,15 @@ public class NPCCommands {
                         if (!sender.hasPermission("citizens.npc.remove") && !sender.hasPermission("citizens.admin"))
                             throw new NoPermissionsException();
                         history.add(sender, new RemoveNPCHistoryItem(npc));
+
+                        // Remove from ID or name
+                        if(sender instanceof Player && !sender.hasPermission("citizens.npc.remove.bypass")) {
+                            Player senderPlayer = (Player) sender;
+                            String ownerId = npc.getOrAddTrait(Owner.class).getOwnerId().toString();
+                            if(!ownerId.equals(senderPlayer.getUniqueId().toString()))
+                                throw new NoPermissionsException();
+                        }
+
                         npc.destroy(sender);
                         Messaging.sendTr(sender, Messages.NPC_REMOVED, npc.getName(), npc.getId());
                     }
@@ -1973,6 +1982,17 @@ public class NPCCommands {
             throw new CommandException(CommandMessages.MUST_BE_OWNER);
         if (!sender.hasPermission("citizens.npc.remove") && !sender.hasPermission("citizens.admin"))
             throw new NoPermissionsException();
+
+
+        // Remove from already selected NPC
+        if(sender instanceof Player && !sender.hasPermission("citizens.npc.remove.bypass")) {
+            Player senderPlayer = (Player) sender;
+            String ownerId = npc.getOrAddTrait(Owner.class).getOwnerId().toString();
+            if(!ownerId.equals(senderPlayer.getUniqueId().toString()))
+                throw new NoPermissionsException();
+        }
+
+
         history.add(sender, new RemoveNPCHistoryItem(npc));
         npc.destroy(sender);
         Messaging.sendTr(sender, Messages.NPC_REMOVED, npc.getName(), npc.getId());
@@ -2088,6 +2108,14 @@ public class NPCCommands {
                     throw new CommandException(Messages.NPC_NOT_FOUND);
                 if (npc != null && toSelect.getId() == npc.getId())
                     throw new CommandException(Messages.NPC_ALREADY_SELECTED);
+
+                if(sender instanceof Player && !sender.hasPermission("citizens.npc.selectothers.bypass")) {
+                    Player senderPlayer = (Player) sender;
+                    String ownerId = toSelect.getOrAddTrait(Owner.class).getOwnerId().toString();
+                    if(!ownerId.equals(senderPlayer.getUniqueId().toString()))
+                        throw new NoPermissionsException();
+                }
+
                 selector.select(sender, toSelect);
                 Messaging.sendWithNPC(sender, Setting.SELECTION_MESSAGE.asString(), toSelect);
             }
