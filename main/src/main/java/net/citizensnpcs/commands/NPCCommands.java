@@ -558,7 +558,6 @@ public class NPCCommands {
 
         if (name.length() == 0)
             throw new CommandException();
-
         if (!sender.hasPermission("citizens.npc.create.*") && !sender.hasPermission("citizens.npc.createall")
                 && !sender.hasPermission("citizens.npc.create." + type.name().toLowerCase().replace("_", "")))
             throw new NoPermissionsException();
@@ -704,6 +703,11 @@ public class NPCCommands {
                 if (npc == null) {
                     throw new CommandException(Messages.NO_NPC_WITH_ID_FOUND, args.getString(1));
                 }
+
+                // Players cannot despawn other's NPCs by default
+                if(!canPlayerManipulateNpc(npc, sender, "citizens.npc.despawn.bypass"))
+                    throw new NoPermissionsException();
+
                 npc.getOrAddTrait(Spawned.class).setSpawned(false);
                 npc.despawn(DespawnReason.REMOVAL);
                 Messaging.sendTr(sender, Messages.NPC_DESPAWNED, npc.getName());
@@ -1959,13 +1963,9 @@ public class NPCCommands {
                             throw new NoPermissionsException();
                         history.add(sender, new RemoveNPCHistoryItem(npc));
 
-                        // Remove from ID or name
-                        if(sender instanceof Player && !sender.hasPermission("citizens.npc.remove.bypass")) {
-                            Player senderPlayer = (Player) sender;
-                            String ownerId = npc.getOrAddTrait(Owner.class).getOwnerId().toString();
-                            if(!ownerId.equals(senderPlayer.getUniqueId().toString()))
-                                throw new NoPermissionsException();
-                        }
+                        // Players cannot remove other's NPCs prividing their ID or name
+                        if(!canPlayerManipulateNpc(npc, sender, "citizens.npc.remove.bypass"))
+                            throw new NoPermissionsException();
 
                         npc.destroy(sender);
                         Messaging.sendTr(sender, Messages.NPC_REMOVED, npc.getName(), npc.getId());
@@ -1983,15 +1983,9 @@ public class NPCCommands {
         if (!sender.hasPermission("citizens.npc.remove") && !sender.hasPermission("citizens.admin"))
             throw new NoPermissionsException();
 
-
-        // Remove from already selected NPC
-        if(sender instanceof Player && !sender.hasPermission("citizens.npc.remove.bypass")) {
-            Player senderPlayer = (Player) sender;
-            String ownerId = npc.getOrAddTrait(Owner.class).getOwnerId().toString();
-            if(!ownerId.equals(senderPlayer.getUniqueId().toString()))
-                throw new NoPermissionsException();
-        }
-
+        // Players cannot remove already selected NPCs from other players by default
+        if(!canPlayerManipulateNpc(npc, sender, "citizens.npc.remove.bypass"))
+            throw new NoPermissionsException();
 
         history.add(sender, new RemoveNPCHistoryItem(npc));
         npc.destroy(sender);
@@ -2109,12 +2103,9 @@ public class NPCCommands {
                 if (npc != null && toSelect.getId() == npc.getId())
                     throw new CommandException(Messages.NPC_ALREADY_SELECTED);
 
-                if(sender instanceof Player && !sender.hasPermission("citizens.npc.selectothers.bypass")) {
-                    Player senderPlayer = (Player) sender;
-                    String ownerId = toSelect.getOrAddTrait(Owner.class).getOwnerId().toString();
-                    if(!ownerId.equals(senderPlayer.getUniqueId().toString()))
-                        throw new NoPermissionsException();
-                }
+                // Players can only select their own NPCs by default
+                if(!canPlayerManipulateNpc(npc, sender, "citizens.npc.selectothers.bypass"))
+                    throw new NoPermissionsException();
 
                 selector.select(sender, toSelect);
                 Messaging.sendWithNPC(sender, Setting.SELECTION_MESSAGE.asString(), toSelect);
@@ -2864,4 +2855,17 @@ public class NPCCommands {
         Messaging.sendTr(sender, Messages.WOLF_TRAIT_UPDATED, npc.getName(), trait.isAngry(), trait.isSitting(),
                 trait.isTamed(), trait.getCollarColor().name());
     }
+
+    private boolean canPlayerManipulateNpc(NPC npc, CommandSender sender, String bypassPerm) {
+        if(sender instanceof ConsoleCommandSender)
+            return true;
+        if(sender.hasPermission(bypassPerm))
+            return true;
+        Player senderPlayer = (Player) sender;
+        String ownerId = npc.getOrAddTrait(Owner.class).getOwnerId().toString();
+        if(ownerId.equals(senderPlayer.getUniqueId().toString()))
+            return true;
+        return false;
+    }
+
 }
