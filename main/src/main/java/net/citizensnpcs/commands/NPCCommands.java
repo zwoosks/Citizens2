@@ -705,8 +705,10 @@ public class NPCCommands {
                 }
 
                 // Players cannot despawn other's NPCs by default
-                if(!canPlayerManipulateNpc(npc, sender, "citizens.npc.despawn.bypass"))
-                    throw new NoPermissionsException();
+                if(!canPlayerManipulateNpc(npc, sender, "citizens.npc.despawn.bypass")) {
+                    sender.sendMessage(parseColor("&aYou don't have permission to despawn other's NPCs"));
+                    return;
+                }
 
                 npc.getOrAddTrait(Spawned.class).setSpawned(false);
                 npc.despawn(DespawnReason.REMOVAL);
@@ -1961,12 +1963,14 @@ public class NPCCommands {
                             throw new CommandException(CommandMessages.MUST_BE_OWNER);
                         if (!sender.hasPermission("citizens.npc.remove") && !sender.hasPermission("citizens.admin"))
                             throw new NoPermissionsException();
-                        history.add(sender, new RemoveNPCHistoryItem(npc));
 
                         // Players cannot remove other's NPCs prividing their ID or name
-                        if(!canPlayerManipulateNpc(npc, sender, "citizens.npc.remove.bypass"))
-                            throw new NoPermissionsException();
+                        if(!canPlayerManipulateNpc(npc, sender, "citizens.npc.remove.bypass")) {
+                            sender.sendMessage(parseColor("&aYou don't have permission to remove other's NPCs"));
+                            return;
+                        }
 
+                        history.add(sender, new RemoveNPCHistoryItem(npc));
                         npc.destroy(sender);
                         Messaging.sendTr(sender, Messages.NPC_REMOVED, npc.getName(), npc.getId());
                     }
@@ -1984,8 +1988,10 @@ public class NPCCommands {
             throw new NoPermissionsException();
 
         // Players cannot remove already selected NPCs from other players by default
-        if(!canPlayerManipulateNpc(npc, sender, "citizens.npc.remove.bypass"))
-            throw new NoPermissionsException();
+        if(!canPlayerManipulateNpc(npc, sender, "citizens.npc.remove.bypass")) {
+            sender.sendMessage(parseColor("&aYou don't have permission to remove other's NPCs"));
+            return;
+        }
 
         history.add(sender, new RemoveNPCHistoryItem(npc));
         npc.destroy(sender);
@@ -2104,8 +2110,10 @@ public class NPCCommands {
                     throw new CommandException(Messages.NPC_ALREADY_SELECTED);
 
                 // Players can only select their own NPCs by default
-                if(!canPlayerManipulateNpc(npc, sender, "citizens.npc.selectothers.bypass"))
-                    throw new NoPermissionsException();
+                if(!canPlayerManipulateNpc(toSelect, sender, "citizens.npc.selectothers.bypass")) {
+                    sender.sendMessage(parseColor("&aYou don't have permission to select other's NPCs"));
+                    return;
+                }
 
                 selector.select(sender, toSelect);
                 Messaging.sendWithNPC(sender, Setting.SELECTION_MESSAGE.asString(), toSelect);
@@ -2857,15 +2865,14 @@ public class NPCCommands {
     }
 
     private boolean canPlayerManipulateNpc(NPC npc, CommandSender sender, String bypassPerm) {
-        if(sender instanceof ConsoleCommandSender)
+        if(sender instanceof ConsoleCommandSender || sender.hasPermission(bypassPerm))
             return true;
-        if(sender.hasPermission(bypassPerm))
-            return true;
-        Player senderPlayer = (Player) sender;
-        String ownerId = npc.getOrAddTrait(Owner.class).getOwnerId().toString();
-        if(ownerId.equals(senderPlayer.getUniqueId().toString()))
-            return true;
-        return false;
+        OfflinePlayer ops = (OfflinePlayer) sender;
+        return npc.getOrAddTrait(Owner.class).getOwnerId().toString().equals(ops.getUniqueId().toString());
+    }
+
+    private String parseColor(String s) {
+        return ChatColor.translateAlternateColorCodes('&', s);
     }
 
 }

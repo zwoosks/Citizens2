@@ -146,7 +146,7 @@ public class Citizens extends JavaPlugin implements CitizensPlugin {
 
     @Override
     public CommandManager getCommandManager() {
-        return null;
+        return commands;
     }
 
     private NPCDataStore createStorage(File folder) {
